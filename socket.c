@@ -79,7 +79,7 @@ int TCP_server_accept_client(int listenfd){
     
     //get ip to string
     char ip[12];
-    inet_ntop(AF_INET, &client,ip, clientlen);
+    inet_ntop(AF_INET, &client.sin_addr,ip, clientlen);
     fprintf(stderr,"Client %s:%d connected\n",ip,client.sin_port);  
     
     return connectfd;
