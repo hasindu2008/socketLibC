@@ -78,7 +78,7 @@ int TCP_server_accept_client(int listenfd){
 	errorCheck(connectfd,"Cannot accept");
     
     //get ip to string
-    char ip[12];
+    char ip[16];
     inet_ntop(AF_INET, &client.sin_addr,ip, clientlen);
     fprintf(stderr,"Client %s:%d connected\n",ip,client.sin_port);  
     
