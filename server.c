@@ -30,7 +30,7 @@ int main(){
     //send a message to the client
     send_full_msg(connectfd,buffer,strlen(buffer));
  
-    //close doen the client connection
+    //close down the client connection
     TCP_server_disconnect_client(connectfd);
     
     //close the down the listening socket

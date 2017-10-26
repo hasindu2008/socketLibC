@@ -6,29 +6,40 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
 #include "socket.h"
+
+
+/*****************Internal Function prototypes that are not included in socket.h ***********************/
+
+/*Die on error. Print the error and exit if the return value of the previous function is -1*/
+void errorCheck(int ret,char *msg);
+
+/*Send length number of bytes from the buffer. This is a blocking call.*/
+void send_all(int socket, void *buffer, long length);
+
+/*Receive length number of bytes to the buffer. This is a blocking call. Make sure that buffer is big enough.*/
+void recv_all(int socket, void *buffer, long length);
 
 
 /*******************************Blocking send and receive***********************************/
 
 /*Send the number of bytes to be sent. Then send the actual data.*/
-void send_full_msg(int socket, void *buffer, int length)
+void send_full_msg(int socket, void *buffer, long length)
 {
-    send_all(socket, &length, sizeof(int));
+    send_all(socket, &length, sizeof(long));
     send_all(socket, buffer, length);
     
 }
 
 /*First receive the number of bytes to be received. Then receive the actual data to the buffer. */
-int recv_full_msg(int socket, void *buffer, int length)
+long recv_full_msg(int socket, void *buffer, long length)
 {
-    int expected_length = 0;
-    recv_all(socket, &expected_length, sizeof(int));
+    long expected_length = 0;
+    recv_all(socket, &expected_length, sizeof(long));
         
-    fprintf(stderr, "receiving a message of size %d\n",expected_length);
+    fprintf(stderr, "receiving a message of size %ld\n",expected_length);
     
-    if(expected_length>=length){
+    if(expected_length>length){
         fprintf(stderr, "Buffer is too small to fit expected data\n");
     }
     
@@ -54,10 +65,38 @@ int TCP_server_init(int PORT){
 	//open socket bind and listen
 	listenfd = socket(AF_INET,SOCK_STREAM,0); 
 	errorCheck(listenfd,"Cannot create socket");
-	ret=bind(listenfd,(struct sockaddr *)&server, sizeof(server));
-	errorCheck(ret,"Cannot bind");
-	fprintf(stderr,"Binding successfull... port : %d\n",PORT);
-	ret=listen(listenfd,5);
+
+    /****sophisticated way of binding*/
+    
+    //This lets a port be used as soon as the using program ends. Otherwise you will get "Cannot bind : Address is used"
+    //for few minutes after the program that previously used the port exists
+    int enable = 1;
+    if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0){
+        perror("setsockopt(SO_REUSEADDR) failed");    
+    }
+    
+    //try binding
+    ret=-1;
+    while(ret==-1){
+        ret=bind(listenfd,(struct sockaddr *)&server, sizeof(server));
+        if (ret==-1){
+            fprintf(stderr,"Cannot bind : Address is used. Trying agin..\n");
+            sleep(1);
+        }
+    }    
+    
+    /*** end of the sophisticated way*/
+    
+    /*following (commented) is the simplest way of doing it. But You will get "Cannot bind : Address is used"
+    for few minutes after the program that used the port exited */
+	//ret=bind(listenfd,(struct sockaddr *)&server, sizeof(server));
+	
+    errorCheck(ret,"Cannot bind");
+    fprintf(stderr,"Binding successfull... port : %d\n",PORT);
+	
+      
+    //now listen
+    ret=listen(listenfd,5);
 	errorCheck(ret,"Cannot listen");
 	fprintf(stderr,"Listening to port %d...\n",PORT);    
     
@@ -118,8 +157,16 @@ int TCP_client_connect(char *ip, int PORT){
 	server.sin_addr.s_addr = inet_addr(ip);
 	server.sin_port = htons(PORT);
 	
-	//connecting
-	int ret=connect(socketfd,(struct sockaddr *)&server, sizeof(server));
+	//connecting. The following (comment) tries ones and giveup
+	//int ret=connect(socketfd,(struct sockaddr *)&server, sizeof(server));
+    
+    //try connecting until successful. this is better than trying once and giving up
+ 	int ret=-1;
+    while(ret==-1){
+        ret=connect(socketfd,(struct sockaddr *)&server, sizeof(server));
+        sleep(1);
+    }
+    
     errorCheck(ret,"Cannot connect");    
     fprintf(stderr,"Connected to server \n");
     
@@ -152,15 +199,16 @@ void errorCheck(int ret,char *msg){
 }
 
 /*Send length number of bytes from the buffer. This is a blocking call.*/
-void send_all(int socket, void *buffer, int length)
+void send_all(int socket, void *buffer, long length)
 {
     char *ptr = (char*) buffer;
-    int i=0;
+    long i=0;
     while (length > 0)
     {
         i = send(socket, ptr, length, 0);
         if (i < 1){
             perror("Could not send all data");
+            sleep(1);
         }
         ptr += i;
         length -= i;
@@ -169,10 +217,10 @@ void send_all(int socket, void *buffer, int length)
 }
 
 /*Receive length number of bytes to the buffer. This is a blocking call. Make sure that buffer is big enough.*/
-void recv_all(int socket, void *buffer, int length)
+void recv_all(int socket, void *buffer, long length)
 {
     char *ptr = (char*) buffer;
-    int i=0;
+    long i=0;
     while (length > 0)
     {
         i = recv(socket, ptr, length, 0);
