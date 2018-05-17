@@ -226,6 +226,7 @@ void recv_all(int socket, void *buffer, long length)
         i = recv(socket, ptr, length, 0);
         if (i < 1){
             perror("Could not receive all data");
+            sleep(1);
         }
         ptr += i;
         length -= i;
