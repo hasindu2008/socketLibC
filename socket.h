@@ -1,3 +1,4 @@
+#include <stdint.h>
 
 /******************************* Blocking Send and Receive Functions***********************************/
 
@@ -14,7 +15,7 @@
     receiver will be able wait until all data is received.
     
 */
-void send_full_msg(int socket, void *buffer, long length);
+void send_full_msg(int socket, void *buffer, int64_t length);
 
 
 /*  Function to receive data 
@@ -31,7 +32,7 @@ void send_full_msg(int socket, void *buffer, long length);
     which is needed inside the function to prevent any overflows. 
     
 */
-long recv_full_msg(int socket, void *buffer, long length);
+int64_t recv_full_msg(int socket, void *buffer, int64_t length);
 
 
 
